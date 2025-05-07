@@ -26,27 +26,27 @@ while True:
         print("Loop finalizado.")
         break
 
-    # track=True gives boxes.id (persisting) and keypoints
+    #track = Nos dá o id atual da box e keypoints
     res = model.track(frame, persist=True, imgsz=640, conf=0.25)[0]
 
     for box, pid in zip(res.boxes.xywh, res.boxes.id):
-        if pid is None:              # shouldn’t happen, but be safe
+        if pid is None:              # normalmente um ProcessID de uma box dessa não costuma retornar null, adicionei só por precaução
             continue
         x, y, w, h = box.cpu().numpy()
-        ar = h / (w + 1e-6)          # aspect ratio
+        ar = h / (w + 1e-6)          # correção pra 16:9
 
         hist = aspect_hist[pid]
         hist.append(ar)
 
-        # need enough history: was previously mostly upright?
+        # olha no histórico para conferir se o último box estava considerado como em pé
         if len(hist) == HISTORY and max(hist) > AR_UP and ar < AR_DOWN:
             now = time.time()
             if now - last_alert_ts[pid] > ALERT_COOLDN:
-                print(f"[{time.strftime('%H:%M:%S')}] FALL DETECTED  (ID {int(pid)})")
+                print(f"[{time.strftime('%H:%M:%S')}] Queda Detectada  (ID {int(pid)})")
                 winsound.Beep(1500, 300)
                 last_alert_ts[pid] = now
 
-        # draw bounding box & label
+        # características da box
         color = (0, 0, 255) if ar < AR_DOWN else (0, 255, 0)
         p1 = int(x - w / 2), int(y - h / 2)
         p2 = int(x + w / 2), int(y + h / 2)
@@ -55,7 +55,7 @@ while True:
             cv2.putText(frame, "FALL", (p1[0], p1[1] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
-    cv2.imshow("Simple Fall Detector  –  ESC to quit", frame)
+    cv2.imshow("Detector de quedas  –", frame)
     if cv2.waitKey(1) == 27:   # ESC
         break
 
